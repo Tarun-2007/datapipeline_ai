@@ -1,0 +1,133 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. PostgreSQL Analytical Database & Warehouse
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: datapulse-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-datapulse_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-datapulse_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-datapulse}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init_schema.sql:/docker-entrypoint-initdb.d/init_schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-datapulse_user} -d ${POSTGRES_DB:-datapulse}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------------------------------
+  # 2. FastAPI Backend & Swagger API Server
+  # ----------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: datapulse-api
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-datapulse_user}:${POSTGRES_PASSWORD:-datapulse_secret}@postgres:5432/${POSTGRES_DB:-datapulse}
+      API_HOST: "0.0.0.0"
+      API_PORT: 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./app/ml/saved_models:/app/app/ml/saved_models
+      - ./logs:/app/logs
+    command: uvicorn app.api.app:app --host 0.0.0.0 --port 8000
+
+  # ----------------------------------------------------------------------------
+  # 3. Streamlit Analytics & Monitoring Dashboard
+  # ----------------------------------------------------------------------------
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: datapulse-dashboard
+    restart: on-failure
+    depends_on:
+      - api
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-datapulse_user}:${POSTGRES_PASSWORD:-datapulse_secret}@postgres:5432/${POSTGRES_DB:-datapulse}
+      API_HOST: "api"
+      API_PORT: 8000
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./app/ml/saved_models:/app/app/ml/saved_models
+    command: streamlit run dashboard/Home.py --server.port 8501 --server.address 0.0.0.0
+
+  # ----------------------------------------------------------------------------
+  # 4. Apache Airflow Orchestration (Init, Webserver & Scheduler)
+  # ----------------------------------------------------------------------------
+  airflow-init:
+    image: apache/airflow:2.8.2-python3.11
+    container_name: datapulse-airflow-init
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-datapulse_user}:${POSTGRES_PASSWORD:-datapulse_secret}@postgres:5432/${POSTGRES_DB:-datapulse}
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_USER:-admin}
+      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_PASSWORD:-admin}
+    command: version
+
+  airflow-webserver:
+    image: apache/airflow:2.8.2-python3.11
+    container_name: datapulse-airflow-webserver
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-datapulse_user}:${POSTGRES_PASSWORD:-datapulse_secret}@postgres:5432/${POSTGRES_DB:-datapulse}
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - .:/opt/airflow/dags/datapulse-ai
+    command: webserver
+
+  airflow-scheduler:
+    image: apache/airflow:2.8.2-python3.11
+    container_name: datapulse-airflow-scheduler
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-datapulse_user}:${POSTGRES_PASSWORD:-datapulse_secret}@postgres:5432/${POSTGRES_DB:-datapulse}
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - .:/opt/airflow/dags/datapulse-ai
+    command: scheduler
+
+volumes:
+  postgres_data:
+    driver: local

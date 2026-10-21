@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+datapulse.db
+
+# Sensitive credentials & environment files
+.env
+!.env.example
+
+# Runtime logs
+logs/
+*.log
+airflow/logs/
+
+# Model artifacts (regenerated via scripts/train_models.py)
+app/ml/saved_models/*.joblib
+!app/ml/saved_models/.gitkeep
+
+# Ingested bronze data files (regenerated via scripts/seed_data.py)
+data/raw/*.csv
+data/raw/*.json
+data/processed/*
+data/quarantine/*
+!data/.gitkeep
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
