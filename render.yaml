@@ -12,9 +12,8 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.api.app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
-    envVarGroups:
-      - datapulse-ai-database
     envVars:
+      - fromGroup: datapulse-ai-database
       - key: PYTHON_VERSION
         value: 3.11.11
       - key: ENVIRONMENT
@@ -28,9 +27,8 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: streamlit run dashboard/Home.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
-    envVarGroups:
-      - datapulse-ai-database
     envVars:
+      - fromGroup: datapulse-ai-database
       - key: PYTHON_VERSION
         value: 3.11.11
       - key: API_BASE_URL
