@@ -1,0 +1,41 @@
+envVarGroups:
+  - name: datapulse-ai-database
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+
+services:
+  - type: web
+    name: datapulse-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.api.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVarGroups:
+      - datapulse-ai-database
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+
+  - type: web
+    name: datapulse-dashboard
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run dashboard/Home.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    envVarGroups:
+      - datapulse-ai-database
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: API_BASE_URL
+        value: http://datapulse-api:10000/api/v1
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"

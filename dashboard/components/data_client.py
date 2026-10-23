@@ -24,7 +24,11 @@ class DashboardDataClient:
     """Provides high-availability data access for Streamlit."""
 
     def __init__(self, api_base_url: str = None):
-        self.api_base_url = api_base_url or f"http://{settings.API_HOST}:{settings.API_PORT}{settings.API_V1_PREFIX}"
+        self.api_base_url = (
+            api_base_url
+            or settings.API_BASE_URL
+            or f"http://{settings.API_HOST}:{settings.API_PORT}{settings.API_V1_PREFIX}"
+        )
 
     def _api_get(self, endpoint: str, params: dict = None) -> Optional[Any]:
         """Attempts to fetch from FastAPI REST endpoint."""

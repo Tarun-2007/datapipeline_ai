@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     API_HOST: str = "127.0.0.1"
     API_PORT: int = 8000
     API_V1_PREFIX: str = "/api/v1"
+    API_BASE_URL: Optional[str] = None
 
     # Dashboard Configuration
     DASHBOARD_PORT: int = 8501

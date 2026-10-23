@@ -289,6 +289,16 @@ docker compose up -d
 - **Streamlit Dashboard:** `http://localhost:8501`
 - **Airflow Webserver:** `http://localhost:8080` (admin / admin)
 
+### Deploy to Render
+
+The repository includes a Render Blueprint for the FastAPI service and Streamlit dashboard:
+
+1. Push this repository to GitHub and create a new Blueprint from it in the Render dashboard.
+2. During Blueprint setup, provide the `DATABASE_URL` environment variable using the rotated PostgreSQL connection string from Render. Do not add credentials to `render.yaml` or commit them.
+3. Deploy both services. Open the public URL shown for `datapulse-dashboard`; the API is available at the `datapulse-api` service URL with `/docs`.
+
+The free web services may spin down when idle. Configure a paid instance if the application needs to stay continuously available.
+
 ---
 
 ## 11. Automated Test Suite & Verification Results
